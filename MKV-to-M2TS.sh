@@ -1,30 +1,47 @@
 #!/bin/bash
 #
-# A simple wrapper around the tsmuxeR
-# Creates a M2TS from a MKV, assuming video is MPEG4 and audio is AC3 or DTS
-# Keeps any subs so long as they are SRT formatted inside the MKV container
+# License
 #
-# v0.1 initial version
-# v0.2 added DTS support
-# v0.3 changed to tsmuxer linux version + added multiple audio lang support
-# v1.0 forked from v0.3
+# Creates a PlayStation 3 compatible M2TS from a MKV
+# Copyright (c) 2009 Flexion.Org, http://flexion.org/
 #
-# Usage: MKV-to-M2TS filename.mkv
+# Permission is hereby granted, free of charge, to any person
+# obtaining a copy of this software and associated documentation
+# files (the "Software"), to deal in the Software without
+# restriction, including without limitation the rights to use,
+# copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following
+# conditions:
 #
-# References
-# - http://sticky123.blogspot.com/2008/03/remuxing-mkv-to-m2ts-on-linux.html
-# - http://ubuntuforums.org/showthread.php?t=1029760
-# - http://www.bitburners.com/articles/create-avchd-discs-with-subtitles-using-tsmuxer/4047/comment-page-1/
-# - http://www.spikedsoftware.co.uk/blog/index.php/2009/04/04/bashing-mkvs-into-m2ts/
-# - http://github.com/JakeWharton/mkvdts2ac3
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
 #
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+# OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+
+IFS=$'\n'
+VER="1.0"
+
+echo "MKV-to-M2TS v${VER} - Creates a PlayStation 3 compatible M2TS from a MKV."
+echo "Copyright (c) 2009 Flexion.Org, http://flexion.org. MIT License" 
+echo
 
 function usage {
+    echo
     echo "Usage"
-    echo "  ${0} movie.mkv"
+    echo "  ${0} movie.mkv [--split] [--help]"
     echo ""
     echo "You can also pass the following optional parameter"
-    echo "  --split    : If required, the .M2TS output will be split at a boundary less than 4GB for FAT32 compatibility"
+    echo "  --split : If required, the .M2TS output will be split at a boundary less than"
+    echo "            4GB for FAT32 compatibility"
+    echo "  --help  : This help."
     echo
     exit 1
 }
@@ -33,44 +50,44 @@ function usage {
 function get_info {	
 	MKV_FILENAME=${1}
 	
-	local MKV_TRACKS=`${CMD_MKTEMP}`
-	${CMD_MKVMERGE} -i ${MKV_FILENAME} > ${MKV_TRACKS}
-	local MKV_INFO=`${CMD_MKTEMP}`
-	${CMD_MKVINFO} ${MKV_FILENAME} > ${MKV_INFO}
+	local MKV_TRACKS=`mktemp`
+	mkvmerge -i ${MKV_FILENAME} > ${MKV_TRACKS}
+	local MKV_INFO=`mktemp`
+	mkvinfo ${MKV_FILENAME} > ${MKV_INFO}
 
 	# Get the track ids for audio/video assumes one audio and one video track currently.
-	VIDEO_ID=`${CMD_GREP} video ${MKV_TRACKS} | ${CMD_CUT} -d' ' -f3 | ${CMD_SED} 's/://'`
-	AUDIO_ID=`${CMD_GREP} audio ${MKV_TRACKS} | ${CMD_CUT} -d' ' -f3 | ${CMD_SED} 's/://'`
-	SUBS_ID=`${CMD_GREP} subtitles ${MKV_TRACKS} | ${CMD_CUT} -d' ' -f3 | ${CMD_SED} 's/://'`
+	VIDEO_ID=`grep video ${MKV_TRACKS} | cut -d' ' -f3 | sed 's/://'`
+	AUDIO_ID=`grep audio ${MKV_TRACKS} | cut -d' ' -f3 | sed 's/://'`
+	SUBS_ID=`grep subtitles ${MKV_TRACKS} | cut -d' ' -f3 | sed 's/://'`
 
 	# Get the audio/video format. Strip the V_, A_ and brackets.
-	VIDEO_FORMAT=`${CMD_GREP} video ${MKV_TRACKS} | ${CMD_CUT} -d' ' -f5 | ${CMD_SED} 's/(\|V_\|)//g'`
-	AUDIO_FORMAT=`${CMD_GREP} audio ${MKV_TRACKS} | ${CMD_CUT} -d' ' -f5 | ${CMD_SED} 's/(\|A_\|)//g'`
+	VIDEO_FORMAT=`grep video ${MKV_TRACKS} | cut -d' ' -f5 | sed 's/(\|V_\|)//g'`
+	AUDIO_FORMAT=`grep audio ${MKV_TRACKS} | cut -d' ' -f5 | sed 's/(\|A_\|)//g'`
 
 	# Are there any subtitles in the .mkv
 	if [ -z ${SUBS_ID} ]; then
 		SUBS_FORMAT=""
 	else
-		SUBS_FORMAT=`${CMD_GREP} subtitles ${MKV_TRACKS} | ${CMD_CUT} -d' ' -f5 | ${CMD_SED} 's/(\|S_\|)//g'`
+		SUBS_FORMAT=`grep subtitles ${MKV_TRACKS} | cut -d' ' -f5 | sed 's/(\|S_\|)//g'`
 	fi
 
 	# Get the video frames per seconds (FPS), number of audio channels and audio sample rate.
 	if [ $VIDEO_ID -lt $AUDIO_ID ]; then
 	    # Video is before Audio track
-    	VIDEO_FPS=`${CMD_GREP} fps ${MKV_INFO} | ${CMD_SED} -n 1p | ${CMD_CUT} -d'(' -f2 | ${CMD_CUT} -d' ' -f1`
+    	VIDEO_FPS=`grep fps ${MKV_INFO} | sed -n 1p | cut -d'(' -f2 | cut -d' ' -f1`
 	else
     	# Video is after Audio track
-	    VIDEO_FPS=`${CMD_GREP} fps ${MKV_INFO} | ${CMD_SED} -n 2p | ${CMD_CUT} -d'(' -f2 | ${CMD_CUT} -d' ' -f1`
+	    VIDEO_FPS=`grep fps ${MKV_INFO} | sed -n 2p | cut -d'(' -f2 | cut -d' ' -f1`
 	fi
 
-	VIDEO_WIDTH=`${CMD_GREP} "Pixel width" ${MKV_INFO} | ${CMD_CUT} -d':' -f2 | ${CMD_SED} 's/ //g'`
-	VIDEO_HEIGHT=`${CMD_GREP} "Pixel height" ${MKV_INFO} | ${CMD_CUT} -d':' -f2 | ${CMD_SED} 's/ //g'`
+	VIDEO_WIDTH=`grep "Pixel width" ${MKV_INFO} | cut -d':' -f2 | sed 's/ //g'`
+	VIDEO_HEIGHT=`grep "Pixel height" ${MKV_INFO} | cut -d':' -f2 | sed 's/ //g'`
 
 	# Get the sample rate
-	AUDIO_RATE=`${CMD_GREP} -A 1 "Audio track" ${MKV_INFO} | ${CMD_SED} -n 2p | ${CMD_CUT} -c 27-31`        
+	AUDIO_RATE=`grep -A 1 "Audio track" ${MKV_INFO} | sed -n 2p | cut -c 27-31`        
 
 	# Get the number of channels
-	AUDIO_CH=`${CMD_GREP} Channels ${MKV_INFO} | ${CMD_SED} -e 1q | ${CMD_CUT} -d':' -f2 | ${CMD_SED} 's/ //g'`
+	AUDIO_CH=`grep Channels ${MKV_INFO} | sed -e 1q | cut -d':' -f2 | sed 's/ //g'`
 	
 	# Is the video h264 and audio AC3 or DTS?
 	if [ "${VIDEO_FORMAT}" != "MPEG4/ISO/AVC" ]; then
@@ -96,41 +113,44 @@ function get_info {
 	fi
 	
 	# Clean up the temp files
-	${CMD_RM} ${MKV_TRACKS} 2>/dev/null
-	${CMD_RM} ${MKV_INFO} 2>/dev/null
+	rm ${MKV_TRACKS} 2>/dev/null
+	rm ${MKV_INFO} 2>/dev/null
 }
 
 # Define the commands we will be using. If you don't have them, get them! ;-)
+REQUIRED_TOOLS=`cat << EOF
+aften
+chmod
+cut
+dcadec
+echo
+file
+grep
+mktemp
+mkvextract
+mkvinfo
+mkvmerge
+rm
+sed
+stat
+tsMuxeR
+EOF`
 
-REQUIRED_TOOLS="chmod file stat grep cut sed rm mktemp mkvmerge mkvinfo mkvextract tsMuxeR dcadec aften"
-which ${REQUIRED_TOOLS} >/dev/null
-        
-if [ $? -eq 1 ]; then
-    echo "ERROR! One of the required tools is missing."
-    echo "The following tools are required for ${0} to operate:"
-    echo " * ${REQUIRED_TOOLS}"
-    exit 1
-fi   
-
-CMD_CHMOD=`which chmod`
-CMD_FILE=`which file`
-CMD_STAT=`which stat`
-CMD_GREP=`which grep`
-CMD_CUT=`which cut`
-CMD_SED=`which sed`
-CMD_RM=`which rm`
-CMD_MKTEMP=`which mktemp`
-CMD_MKVMERGE=`which mkvmerge`
-CMD_MKVINFO=`which mkvinfo`
-CMD_MKVEXTRACT=`which mkvextract`
-CMD_TSMUXER=`which tsMuxeR`
-CMD_DCADEC=`which dcadec`
-CMD_AFTEN=`which aften`
+for REQUIRED_TOOL in ${REQUIRED_TOOLS}
+do
+    # Is the required tool in the path?
+    which ${REQUIRED_TOOL} >/dev/null  
+         
+    if [ $? -eq 1 ]; then
+        echo "ERROR! \"${REQUIRED_TOOL}\" is missing. ${0} requires it to operate."
+        echo "       Please install \"${REQUIRED_TOOL}\"."
+        exit 1      
+    fi        
+done
 
 # Get the first parameter passed in and validate it.
 if [ $# -lt 1 ]; then
     echo "ERROR! ${0} requires a .mkv file as input"	
-    echo    
 	usage
 elif [ "${1}" == "-h" ] || [ "${1}" == "--h" ] || [ "${1}" == "-help" ] || [ "${1}" == "--help" ] || [ "${1}" == "-?" ]; then
     usage
@@ -138,10 +158,9 @@ else
     MKV_FILENAME=${1}
         
     # Is the .mkv a real Matroska file?
-    MKV_VALID=`${CMD_FILE} ${MKV_FILENAME} | ${CMD_GREP} Matroska`
+    MKV_VALID=`file ${MKV_FILENAME} | grep Matroska`
     if [ -z "${MKV_VALID}" ]; then
         echo "ERROR! ${0} requires valid a Matroska file as input. \"${1}\" is not a Matroska file."
-        echo
         usage
     fi	    
     
@@ -163,9 +182,9 @@ M2TS_SPLIT_SIZE=0
 while [ $# -gt 0 ]; 
 do	
 	case "${1}" in
-		-s|--split)
+		-s|--split|-split)
             # Get the size of the .mkv file in bytes (b)
-            MKV_SIZE=`${CMD_STAT} ${MKV_FILENAME} | ${CMD_GREP} Size | ${CMD_CUT} -f1 | ${CMD_SED} 's/ \|Size://g'`
+            MKV_SIZE=`stat -c%s "${MKV_FILENAME}"`            
 
             # The PS3 can't play files which are bigger than 4GB and FAT32 doesn't like files bigger than 4GB.
             # Lets figure out the M2TS split size should in kilo-bytes (kb)
@@ -179,7 +198,12 @@ do
 	            # >= 4gb  : Divide .mkv filesize by 2 and split by that amount
 	            M2TS_SPLIT_SIZE=$(((${MKV_SIZE} / 2) / 1024))
             fi										                        
-            shift;;        
+            shift;;  
+        -h|--h|-help|--help|-?)
+            usage;;                  
+       	*)
+           echo "ERROR! \"${1}\" is not s supported parameter."
+           usage;;            
 	esac    
 done
 
@@ -190,7 +214,7 @@ M2TS_SPLIT_SIZE=`echo "${M2TS_SPLIT_SIZE}KB"`
 get_info ${MKV_FILENAME}
 
 # Remove .meta file from previous run. Then create a new tsMuxeR .meta file.
-${CMD_RM} ${META_FILENAME} 2>/dev/null
+rm ${META_FILENAME} 2>/dev/null
 
 # Add split options, if required.
 if [ "${M2TS_SPLIT_SIZE}" != "0KB" ]; then
@@ -208,8 +232,9 @@ if [ "${AUDIO_FORMAT}" == "AC3" ]; then
     echo "A_AC3, \"${MKV_FILENAME}\", track=${AUDIO_ID}, lang=und" >> ${META_FILENAME}
 else    
     # We have DTS, transcoding required.
-    ${CMD_MKVEXTRACT} tracks "${MKV_FILENAME}" ${AUDIO_ID}:"${DTS_FILENAME}" 
-    ${CMD_DCADEC} -o wavall "${DTS_FILENAME}" | ${CMD_AFTEN} -v 0 -readtoeof 1 - "${AC3_FILENAME}"
+    # TODO - Put this in a FIFO!
+    mkvextract tracks "${MKV_FILENAME}" ${AUDIO_ID}:"${DTS_FILENAME}" 
+    dcadec -o wavall "${DTS_FILENAME}" | aften -v 0 -readtoeof 1 - "${AC3_FILENAME}"
     echo "A_AC3, \"${AC3_FILENAME}\", track=1, lang=und" >> ${META_FILENAME}
 fi
 
@@ -219,17 +244,17 @@ if [ "${SUBS_ID}" != "" ]; then
 fi
 
 # For debugging
-cat ${META_FILENAME}
+#cat ${META_FILENAME}
 
 # Convert the MKV to M2TS
-${CMD_TSMUXER} ${META_FILENAME} ${M2TS_FILENAME}
+tsMuxeR ${META_FILENAME} ${M2TS_FILENAME}
 
 # Remove the transient files
-${CMD_RM} ${META_FILENAME} 2>/dev/null
-${CMD_RM} ${AC3_FILENAME} 2>/dev/null
-${CMD_RM} ${DTS_FILENAME} 2>/dev/null
+rm ${META_FILENAME} 2>/dev/null
+rm ${AC3_FILENAME} 2>/dev/null
+rm ${DTS_FILENAME} 2>/dev/null
 
 # Change the permission on the M2TS file(s) to something sane.
-${CMD_CHMOD} 644 ${BASENAME}*.m2ts 2>/dev/null   
+chmod 644 ${BASENAME}*.m2ts 2>/dev/null   
 
 echo "All Done!"
