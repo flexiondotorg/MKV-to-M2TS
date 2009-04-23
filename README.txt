@@ -30,10 +30,11 @@ Creates a PlayStation 3 compatible M2TS from a MKV, assuming video is H.264
 and audio is AC3 or DTS with as little re-encoding as possible. Any subtitles in 
 the MKV are preserved in the M2TS although the PS3 can't display subtitles in 
 M2TS containers. Optioanally splits the M2TS, if it is greater than 4GB, to 
-maintain FAT32 compatibility. 
+maintain FAT32 compatibility. Unlike other MKV to M2TS solutions, this script
+doesn't create any intermeditate files during the conversion.
 
 This scripts Work on Ubuntu Linux, should work on any other Linux/Unix flavour 
-and possibly Mac OS X providing you have the required tools installed. 
+and possibly Mac OS X providing you have the required tools installed.
 
 Usage
 
@@ -53,6 +54,7 @@ Known Limitations
 
  - The PS3 can't play DTS audio streams in M2TS containers, therefore DTS audio
    is transcoded to AC3.
+ - Audio and subtitle language names are not preserved, everything is 'und'
 
 Source Code
 

@@ -232,9 +232,10 @@ if [ "${AUDIO_FORMAT}" == "AC3" ]; then
     echo "A_AC3, \"${MKV_FILENAME}\", track=${AUDIO_ID}, lang=und" >> ${META_FILENAME}
 else    
     # We have DTS, transcoding required.
-    # TODO - Put this in a FIFO!
-    mkvextract tracks "${MKV_FILENAME}" ${AUDIO_ID}:"${DTS_FILENAME}" 
-    dcadec -o wavall "${DTS_FILENAME}" | aften -v 0 -readtoeof 1 - "${AC3_FILENAME}"
+    mkfifo ${DTS_FILENAME}
+    mkfifo ${AC3_FILENAME}    
+    dcadec -o wavall "${DTS_FILENAME}" | aften -v 0 -readtoeof 1 - "${AC3_FILENAME}" &
+    mkvextract tracks "${MKV_FILENAME}" ${AUDIO_ID}:"${DTS_FILENAME}" &    
     echo "A_AC3, \"${AC3_FILENAME}\", track=1, lang=und" >> ${META_FILENAME}
 fi
 
