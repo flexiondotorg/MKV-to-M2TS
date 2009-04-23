@@ -47,7 +47,7 @@ You can also pass the following optional parameter
 
 Requirements
 
- - aften, chmod, cat, cut, dcadec, echo, file, grep, mktemp, mkvextract, 
+ - aften, bash, chmod, cat, cut, dcadec, echo, file, grep, mktemp, mkvextract, 
    mkvinfo, mkvmerge, rm, sed, stat, which, tsMuxeR.
    
 Known Limitations
