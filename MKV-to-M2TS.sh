@@ -27,7 +27,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 
 IFS=$'\n'
-VER="1.0"
+VER="1.1"
 
 echo "MKV-to-M2TS v${VER} - Creates a PlayStation 3 compatible M2TS from a MKV."
 echo "Copyright (c) 2009 Flexion.Org, http://flexion.org. MIT License" 
@@ -78,6 +78,14 @@ function get_info {
 	else
     	# Video is after Audio track
 	    VIDEO_FPS=`grep fps ${MKV_INFO} | sed -n 2p | cut -d'(' -f2 | cut -d' ' -f1`
+	fi
+	
+	# Guess the FPS if we didn't find one (it seems tsMuxer does it that way)
+	# see http://en.wikipedia.org/wiki/24p
+	# Its needed for files with a subtitle track, otherwise tsMuxer compains
+	if [ -z "${VIDEO_FPS}" ]; then
+		echo "WARNING! H.264 stream does not contain fps field. Defaulting to 23.976."
+		VIDEO_FPS="23.976"
 	fi
 
 	VIDEO_WIDTH=`grep "Pixel width" ${MKV_INFO} | cut -d':' -f2 | sed 's/ //g'`

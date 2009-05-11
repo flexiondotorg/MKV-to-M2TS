@@ -72,5 +72,9 @@ References
  - http://www.spikedsoftware.co.uk/blog/index.php/2009/04/04/bashing-mkvs-into-m2ts/
  - http://github.com/JakeWharton/mkvdts2ac3
 
+v1.1 2009, 11th May.
+ - Added a patch contributed by David Solbach that guesses the fps of the H.264
+   video stream if the MKV field is not set. Thanks David :-)
+
 v1.0 2009, 23rd April.
  - Initial release
