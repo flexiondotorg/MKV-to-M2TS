@@ -26,6 +26,19 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+#Your script don’t work with more than one audio track, i modify this lines:
+#AUDIO_ID=`grep audio ${MKV_TRACKS} | cut -d’ ‘ -f3 | sed ’s/://’ | head -n 1`
+#AUDIO_FORMAT=`grep audio ${MKV_TRACKS} | cut -d’ ‘ -f5 | sed ’s/(\|A_\|)//g’ | head -n 1`
+
+#and add this lines below of the past lines:
+#if [ "$VIDEO_ID" = "" ]; then VIDEO_ID=0; fi
+#if [ "$AUDIO_ID" = "" ]; then AUDIO_ID=0; fi
+#if [ "$SUBS_ID" = "" ]; then SUBS_ID=0 ; fi
+
+#Thanks for share your work!
+
+#Sorry for my bad english. I’m mexican.
+
 IFS=$'\n'
 VER="1.1"
 
@@ -57,18 +70,19 @@ function get_info {
 
 	# Get the track ids for audio/video assumes one audio and one video track currently.
 	VIDEO_ID=`grep video ${MKV_TRACKS} | cut -d' ' -f3 | sed 's/://'`
-	AUDIO_ID=`grep audio ${MKV_TRACKS} | cut -d' ' -f3 | sed 's/://'`
-	SUBS_ID=`grep subtitles ${MKV_TRACKS} | cut -d' ' -f3 | sed 's/://'`
+	AUDIO_ID=`grep audio ${MKV_TRACKS} | cut -d' ' -f3 | sed 's/://' | head -n1`
+
+	SUBS_ID=`grep subtitles ${MKV_TRACKS} | cut -d' ' -f3 | sed 's/://' | head -n1`
 
 	# Get the audio/video format. Strip the V_, A_ and brackets.
 	VIDEO_FORMAT=`grep video ${MKV_TRACKS} | cut -d' ' -f5 | sed 's/(\|V_\|)//g'`
-	AUDIO_FORMAT=`grep audio ${MKV_TRACKS} | cut -d' ' -f5 | sed 's/(\|A_\|)//g'`
+	AUDIO_FORMAT=`grep audio ${MKV_TRACKS} | cut -d' ' -f5 | sed 's/(\|A_\|)//g' | head -n1`
 
 	# Are there any subtitles in the .mkv
 	if [ -z ${SUBS_ID} ]; then
 		SUBS_FORMAT=""
 	else
-		SUBS_FORMAT=`grep subtitles ${MKV_TRACKS} | cut -d' ' -f5 | sed 's/(\|S_\|)//g'`
+		SUBS_FORMAT=`grep subtitles ${MKV_TRACKS} | cut -d' ' -f5 | sed 's/(\|S_\|)//g' | head -n1`
 	fi
 
 	# Get the video frames per seconds (FPS), number of audio channels and audio sample rate.
@@ -242,7 +256,7 @@ else
     # We have DTS, transcoding required.
     mkfifo ${DTS_FILENAME}
     mkfifo ${AC3_FILENAME}    
-    dcadec -o wavall "${DTS_FILENAME}" | aften -v 0 -readtoeof 1 - "${AC3_FILENAME}" &
+    dcadec -o wavall "${DTS_FILENAME}" | aften -b 640 -v 0 -readtoeof 1 - "${AC3_FILENAME}" &
     mkvextract tracks "${MKV_FILENAME}" ${AUDIO_ID}:"${DTS_FILENAME}" &    
     echo "A_AC3, \"${AC3_FILENAME}\", track=1, lang=und" >> ${META_FILENAME}
 fi
