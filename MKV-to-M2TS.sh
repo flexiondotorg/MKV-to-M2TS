@@ -263,7 +263,8 @@ fi
 
 # Add any subtitles, if required.
 if [ "${SUBS_ID}" != "" ]; then
-    echo "S_TEXT/UTF8, \"${MKV_FILENAME}\", font-name=\"Arial\", font-size=65, font-color=0x00ffffff, bottom-offset=24, font-border=2, text-align=center, video-width=${VIDEO_WIDTH}, video-height=${VIDEO_HEIGHT}, fps=${VIDEO_FPS}, track=${SUBS_ID}, lang=und" >> ${META_FILENAME}
+    ARIAL_TTF=`locate Arial.ttf | head -n1`
+    echo "S_TEXT/UTF8, \"${MKV_FILENAME}\", font-name=\"${ARIAL_TTF}\", font-size=65, font-color=0x00ffffff, bottom-offset=24, font-border=2, text-align=center, video-width=${VIDEO_WIDTH}, video-height=${VIDEO_HEIGHT}, fps=${VIDEO_FPS}, track=${SUBS_ID}, lang=und" >> ${META_FILENAME}
 fi
 
 # For debugging
