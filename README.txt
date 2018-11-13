@@ -1,3 +1,7 @@
+############################################################
+# This project is inactive and archived here for reference #
+############################################################
+
 License
 
 Creates a PlayStation 3 compatible M2TS from a MKV
